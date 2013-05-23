@@ -56,6 +56,18 @@ var normalize = function(vel) {
   };
 };
 
+var rotate = function(dir, angle) {
+  var theta = Math.atan2(dir.y, dir.x)
+  var r = Math.sqrt(dir.x * dir.x + dir.y * dir.y);
+
+  theta += angle;
+
+  return {
+    x: r * Math.cos(theta),
+    y: r * Math.sin(theta)
+  }
+};
+
 Asteroid.prototype.draw = function(ctx) {
   ctx.beginPath();
   ctx.arc(this.pos.x, this.pos.y, this.r, 0, Math.PI * 2, true);
@@ -148,10 +160,15 @@ Game.prototype.update = function() {
 
 Game.prototype.start = function() {
   var that = this;
-  key('down', this.ship.power.bind(this.ship,{ ddx:0, ddy:1 }));
-  key('up', this.ship.power.bind(this.ship, { ddx:0, ddy:-1 }));
-  key('left', this.ship.power.bind(this.ship, { ddx:-1, ddy:0 }));
-  key('right', this.ship.power.bind(this.ship, { ddx:1, ddy:0 }));
+  // key('down', this.ship.power.bind(this.ship,{ ddx:0, ddy:1 }));
+  // key('up', this.ship.power.bind(this.ship, { ddx:0, ddy:-1 }));
+  // key('left', this.ship.power.bind(this.ship, { ddx:-1, ddy:0 }));
+  // key('right', this.ship.power.bind(this.ship, { ddx:1, ddy:0 }));
+  key('down', this.ship.powerDown.bind(this.ship));
+  key('up', this.ship.powerUp.bind(this.ship));
+  key('left', this.ship.turnLeft.bind(this.ship));
+  key('right', this.ship.turnRight.bind(this.ship));
+
   key('space', this.ship.fireBullet.bind(this.ship));
   this.interval = setInterval(function() {
     that.update();
@@ -165,8 +182,8 @@ function Ship(pos, game) {
   this.game = game;
   this.vel = { dx:1, dy:1 };
   this.speed = 0;
-  this.turretDir = { dx: 0, dy: -1 };
-  this.dir = { dx: 0, dy: -1 };
+  this.turretDir = { x: 0, y: -1 };
+  this.dir = { x: 0, y: -1 };
 }
 
 Ship.prototype.velocity = function() {
