@@ -37,8 +37,19 @@ var distance_squared = function(pos1, pos2) {
   return dx * dx + dy * dy;
 };
 
+var getSpeed = function(vel) {
+  return Math.sqrt(vel.dx * vel.dx + vel.dy * vel.dy);
+};
+
+var getVelocity = function(dir, speed) {
+  return {
+    dx: dir.x * speed,
+    dy: dir.y * speed
+  }
+};
+
 var normalize = function(vel) {
-  var speed = Math.sqrt(vel.dx * vel.dx + vel.dy * vel.dy);
+  var speed = getSpeed(vel);
   return {
     x: vel.dx / speed,
     y: vel.dy / speed
@@ -53,8 +64,8 @@ Asteroid.prototype.draw = function(ctx) {
 };
 
 Asteroid.prototype.update = function() {
-  this.pos.x += this.vel.dx;
-  this.pos.y += this.vel.dy;
+  this.pos.x = (this.pos.x + this.vel.dx + 600) % 600;
+  this.pos.y = (this.pos.y + this.vel.dy + 600) % 600;
 };
 
 
@@ -103,10 +114,10 @@ Game.prototype.update = function() {
   for (var i = 0; i < this.asteroids.length; ++i) {
     var ast = this.asteroids[i];
     ast.update();
-    if ((ast.pos.x > 600 || ast.pos.x < 0) ||
-    (ast.pos.y > 600 || ast.pos.y < 0)) {
-      this.asteroids.splice(i--, 1);
-    }
+    // if ((ast.pos.x > 600 || ast.pos.x < 0) ||
+    // (ast.pos.y > 600 || ast.pos.y < 0)) {
+    //   this.asteroids.splice(i--, 1);
+    // }
   }
 
   for (var i = 0; i < this.bullets.length; ++i) {
@@ -153,12 +164,30 @@ function Ship(pos, game) {
   this.r = 10;
   this.game = game;
   this.vel = { dx:1, dy:1 };
+  this.speed = 0;
+  this.turretDir = { dx: 0, dy: -1 };
+  this.dir = { dx: 0, dy: -1 };
 }
 
+Ship.prototype.velocity = function() {
+  getVelocity(this.dir, this.speed);
+};
+
 Ship.prototype.draw = function(ctx) {
+  var dir = normalize(this.vel);
   ctx.beginPath();
   ctx.arc(this.pos.x, this.pos.y, this.r, 0, Math.PI*2,true);
   ctx.fillStyle = "red";
+  ctx.fill();
+  ctx.beginPath();
+  ctx.lineWidth = 3;
+  ctx.moveTo(this.pos.x, this.pos.y);
+  ctx.lineTo(this.pos.x + 2 * this.r * dir.x, this.pos.y + 2 * this.r * dir.y);
+  ctx.strokeStyle = "white";
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(this.pos.x, this.pos.y, this.r / 2, 0, Math.PI*2,true);
+  ctx.fillStyle = "white";
   ctx.fill();
 };
 
@@ -180,8 +209,32 @@ Ship.prototype.update = function() {
 };
 
 Ship.prototype.power = function(dir) {
-  this.vel.dx += dir.ddx;
-  this.vel.dy += dir.ddy;
+  var newVelX = this.vel.dx + dir.ddx;
+  var newVelY = this.vel.dy + dir.ddy;
+  if (getSpeed({dx: newVelX, dy: newVelY}) < 9) {
+    this.vel.dx += dir.ddx;
+    this.vel.dy += dir.ddy;
+  }
+};
+
+Ship.prototype.powerUp = function() {
+  if (this.speed < 9) {
+    this.speed += .5;
+  }
+};
+
+Ship.prototype.powerDown = function() {
+  if (this.speed > 0) {
+    this.speed -= .5;
+  }
+};
+
+Ship.prototype.turnLeft = function() {
+  this.turretDir = rotate(this.turretDir, Math.PI / 12);
+};
+
+Ship.prototype.turnRight = function() {
+  this.turretDir = rotate(this.turretDir, -Math.PI / 12);
 };
 
 Ship.prototype.fireBullet = function() {
