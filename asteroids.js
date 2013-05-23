@@ -7,7 +7,7 @@ function Asteroid(pos, vel) {
 function Game(ctx) {
   this.ctx = ctx;
   this.asteroids = [];
-  for(var i = 0; i < 50; i++) {
+  for(var i = 0; i < 0; i++) {
     this.asteroids.push(Asteroid.randomAsteroid());
   }
   this.ship = new Ship({x: 300, y: 300}, this);
@@ -53,6 +53,8 @@ Asteroid.prototype.update = function() {
 };
 
 Game.prototype.update = function() {
+  this.ship.update();
+
   for (var i = 0; i < this.asteroids.length; ++i) {
     var ast = this.asteroids[i];
     ast.update();
@@ -70,6 +72,10 @@ Game.prototype.update = function() {
 
 Game.prototype.start = function() {
   var that = this;
+  key('down', this.ship.power.bind(this.ship,{ ddx:0, ddy:1 }));
+  key('up', this.ship.power.bind(this.ship, { ddx:0, ddy:-1 }));
+  key('left', this.ship.power.bind(this.ship, { ddx:-1, ddy:0 }));
+  key('right', this.ship.power.bind(this.ship, { ddx:1, ddy:0 }));
   this.interval = setInterval(function() {
     that.update();
     that.draw();
@@ -80,6 +86,7 @@ function Ship(pos, game) {
   this.pos = pos;
   this.r = 10;
   this.game = game;
+  this.vel = { dx:1, dy:1 };
 }
 
 Ship.prototype.draw = function(ctx) {
@@ -100,3 +107,32 @@ Ship.prototype.isHit = function() {
 
   return false;
 };
+
+Ship.prototype.update = function() {
+  this.pos.x = (this.pos.x + this.vel.dx + 600) % 600;
+  this.pos.y = (this.pos.y + this.vel.dy + 600) % 600;
+  // if (this.pos.x < 0) {
+//     this.pos.x += 600;
+//   }
+//   if (this.pos.y < 0) {
+//     this.pos.y += 600;
+//   }
+};
+
+// Ship.prototype.powerUp = function() {
+//   this.vel.dx *= 1.1
+//   this.vel.dy *= 1.1
+// };
+//
+// Ship.prototype.powerDown = function() {
+//   this.vel.dx /= 1.1
+//   this.vel.dy /= 1.1
+// };
+
+Ship.prototype.power = function(dir) {
+  this.vel.dx += dir.ddx;
+  this.vel.dy += dir.ddy;
+}
+
+key('a', function(){ alert('you pressed a!') });
+
