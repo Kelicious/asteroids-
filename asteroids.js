@@ -1,4 +1,5 @@
-function Asteroid(pos, vel) {
+function Asteroid(pos, vel, game) {
+  this.game = game;
   this.vel = vel;
   this.pos = pos;
   this.r = 10;
@@ -6,27 +7,23 @@ function Asteroid(pos, vel) {
 
 function Game(ctx) {
   this.ctx = ctx;
+  this.ctx.fillStyle = 'black';
+  this.ctx.fillRect(0,0,600,600);
+  this.ctx.fill();
   this.asteroids = [];
-  for(var i = 0; i < 0; i++) {
-    this.asteroids.push(Asteroid.randomAsteroid());
+  for(var i = 0; i < 10; i++) {
+    this.asteroids.push(Asteroid.randomAsteroid(this));
   }
   this.ship = new Ship({x: 300, y: 300}, this);
-
-  this.draw = function() {
-    this.ctx.clearRect(0, 0, 600, 600);
-    for (var i = 0, len = this.asteroids.length; i < len; ++i) {
-      this.asteroids[i].draw(this.ctx);
-    }
-    this.ship.draw(this.ctx);
-  };
+  this.bullets = [];
 }
 
-Asteroid.randomAsteroid = function() {
+Asteroid.randomAsteroid = function(game) {
   var x = Math.floor(Math.random()*600);
   var y = Math.floor(Math.random()*600);
-  var dx = randomNum(-10,10);
-  var dy = randomNum(-10,10);
-  return new Asteroid({ x: x, y: y }, {dx: dx, dy: dy});
+  var dx = randomNum(-5,5);
+  var dy = randomNum(-5,5);
+  return new Asteroid({ x: x, y: y }, {dx: dx, dy: dy}, game);
 };
 
 var randomNum = function(min, max) {
@@ -40,16 +37,64 @@ var distance_squared = function(pos1, pos2) {
   return dx * dx + dy * dy;
 };
 
+var normalize = function(vel) {
+  var speed = Math.sqrt(vel.dx * vel.dx + vel.dy * vel.dy);
+  return {
+    x: vel.dx / speed,
+    y: vel.dy / speed
+  };
+};
+
 Asteroid.prototype.draw = function(ctx) {
   ctx.beginPath();
   ctx.arc(this.pos.x, this.pos.y, this.r, 0, Math.PI * 2, true);
-  ctx.fillStyle = "black";
+  ctx.fillStyle = "white";
   ctx.fill();
 };
 
 Asteroid.prototype.update = function() {
   this.pos.x += this.vel.dx;
   this.pos.y += this.vel.dy;
+};
+
+
+Asteroid.prototype.isHit = function() {
+  var asteroids = this.game.asteroids;
+  for (var i = 0; i < asteroids.length; ++i) {
+    var ast = asteroids[i];
+    if (ast === this) {
+      continue;
+    }
+    if (distance_squared(this.pos, ast.pos) < Math.pow(this.r + ast.r, 2)) {
+      return true;
+    }
+  }
+
+  var bullets = this.game.bullets;
+  for (var i = 0; i < bullets.length; ++i) {
+    var bullet = bullets[i];
+    if (bullet === this) {
+      continue;
+    }
+    if (distance_squared(this.pos, bullet.pos) < Math.pow(this.r + bullet.r, 2)) {
+      return true;
+    }
+  }
+
+  return false;
+};
+
+
+
+Game.prototype.draw = function() {
+  this.ctx.clearRect(0, 0, 600, 600);
+  for (var i = 0, len = this.asteroids.length; i < len; ++i) {
+    this.asteroids[i].draw(this.ctx);
+  }
+  for (var i = 0, len = this.bullets.length; i < len; ++i) {
+    this.bullets[i].draw(this.ctx);
+  }
+  this.ship.draw(this.ctx);
 };
 
 Game.prototype.update = function() {
@@ -64,10 +109,30 @@ Game.prototype.update = function() {
     }
   }
 
+  for (var i = 0; i < this.bullets.length; ++i) {
+    var bullet = this.bullets[i];
+    bullet.update();
+    if ((bullet.pos.x > 600 || bullet.pos.x < 0) ||
+    (bullet.pos.y > 600 || bullet.pos.y < 0)) {
+      this.bullets.splice(i--, 1);
+    }
+  }
+
   if (this.ship.isHit()) {
     alert("Game over");
     clearInterval(this.interval);
   }
+
+  var asteroids = _.reject(this.asteroids, function(asteroid){
+    return asteroid.isHit();
+  });
+
+  var bullets = _.reject(this.bullets, function(bullet){
+    return bullet.isHit();
+  });
+
+  this.asteroids = asteroids;
+  this.bullets = bullets;
 };
 
 Game.prototype.start = function() {
@@ -76,6 +141,7 @@ Game.prototype.start = function() {
   key('up', this.ship.power.bind(this.ship, { ddx:0, ddy:-1 }));
   key('left', this.ship.power.bind(this.ship, { ddx:-1, ddy:0 }));
   key('right', this.ship.power.bind(this.ship, { ddx:1, ddy:0 }));
+  key('space', this.ship.fireBullet.bind(this.ship));
   this.interval = setInterval(function() {
     that.update();
     that.draw();
@@ -111,28 +177,61 @@ Ship.prototype.isHit = function() {
 Ship.prototype.update = function() {
   this.pos.x = (this.pos.x + this.vel.dx + 600) % 600;
   this.pos.y = (this.pos.y + this.vel.dy + 600) % 600;
-  // if (this.pos.x < 0) {
-//     this.pos.x += 600;
-//   }
-//   if (this.pos.y < 0) {
-//     this.pos.y += 600;
-//   }
 };
-
-// Ship.prototype.powerUp = function() {
-//   this.vel.dx *= 1.1
-//   this.vel.dy *= 1.1
-// };
-//
-// Ship.prototype.powerDown = function() {
-//   this.vel.dx /= 1.1
-//   this.vel.dy /= 1.1
-// };
 
 Ship.prototype.power = function(dir) {
   this.vel.dx += dir.ddx;
   this.vel.dy += dir.ddy;
+};
+
+Ship.prototype.fireBullet = function() {
+  var pos = {
+    x: this.pos.x,
+    y: this.pos.y
+  };
+  return new Bullet(pos, normalize(this.vel), this.game);
+};
+
+function Bullet(pos, dir, game) {
+  this.pos = pos;
+  this.dir = dir;
+  this.speed = 10;
+  this.r = 2;
+  this.game = game;
+  this.game.bullets.push(this);
+};
+
+Bullet.prototype.vel = function() {
+  return {
+    dx: this.speed * this.dir.x,
+    dy: this.speed * this.dir.y
+  };
+};
+
+Bullet.prototype.draw = function(ctx) {
+  ctx.beginPath();
+  ctx.arc(this.pos.x, this.pos.y, this.r, 0, Math.PI*2,true);
+  ctx.fillStyle = "yellow";
+  ctx.fill();
+};
+
+Bullet.prototype.update = function() {
+  this.pos.x += this.vel().dx;
+  this.pos.y += this.vel().dy;
+};
+
+
+Bullet.prototype.isHit = function() {
+  var asteroids = this.game.asteroids;
+  for (var i = 0; i < asteroids.length; ++i) {
+    var ast = asteroids[i];
+    if (distance_squared(this.pos, ast.pos) < Math.pow(this.r + ast.r, 2)) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
-key('a', function(){ alert('you pressed a!') });
+
 
