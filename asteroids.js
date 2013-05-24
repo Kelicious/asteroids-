@@ -187,11 +187,12 @@ function Ship(pos, game) {
 }
 
 Ship.prototype.velocity = function() {
-  getVelocity(this.dir, this.speed);
+  return getVelocity(this.dir, this.speed);
 };
 
 Ship.prototype.draw = function(ctx) {
-  var dir = normalize(this.vel);
+  //var dir = normalize(this.vel);
+  var dir = this.turretDir;
   ctx.beginPath();
   ctx.arc(this.pos.x, this.pos.y, this.r, 0, Math.PI*2,true);
   ctx.fillStyle = "red";
@@ -221,8 +222,8 @@ Ship.prototype.isHit = function() {
 };
 
 Ship.prototype.update = function() {
-  this.pos.x = (this.pos.x + this.vel.dx + 600) % 600;
-  this.pos.y = (this.pos.y + this.vel.dy + 600) % 600;
+  this.pos.x = (this.pos.x + this.velocity().dx + 600) % 600;
+  this.pos.y = (this.pos.y + this.velocity().dy + 600) % 600;
 };
 
 Ship.prototype.power = function(dir) {
@@ -235,8 +236,17 @@ Ship.prototype.power = function(dir) {
 };
 
 Ship.prototype.powerUp = function() {
-  if (this.speed < 9) {
-    this.speed += .5;
+  var vx = this.velocity().dx;
+  var vy = this.velocity().dy;
+  var vel = {dx: vx + this.turretDir.x, dy: vy + this.turretDir.y};
+  var speed = getSpeed(vel);
+  if (speed > 9) {
+    speed -= 1;
+  }
+  this.speed = speed;
+  var dir = normalize(vel);
+  if (!isNaN(dir.x)) {
+    this.dir = dir;
   }
 };
 
@@ -247,11 +257,11 @@ Ship.prototype.powerDown = function() {
 };
 
 Ship.prototype.turnLeft = function() {
-  this.turretDir = rotate(this.turretDir, Math.PI / 12);
+  this.turretDir = rotate(this.turretDir, -Math.PI / 12);
 };
 
 Ship.prototype.turnRight = function() {
-  this.turretDir = rotate(this.turretDir, -Math.PI / 12);
+  this.turretDir = rotate(this.turretDir, Math.PI / 12);
 };
 
 Ship.prototype.fireBullet = function() {
@@ -259,7 +269,7 @@ Ship.prototype.fireBullet = function() {
     x: this.pos.x,
     y: this.pos.y
   };
-  return new Bullet(pos, normalize(this.vel), this.game);
+  return new Bullet(pos, this.turretDir, this.game);
 };
 
 function Bullet(pos, dir, game) {
@@ -302,6 +312,3 @@ Bullet.prototype.isHit = function() {
 
   return false;
 }
-
-
-
